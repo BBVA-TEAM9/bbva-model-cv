@@ -1,8 +1,12 @@
+import re
 import cv2
 import numpy as np
 import imutils
 import pandas as pd
 from datetime import datetime
+import requests
+
+URL = "http://localhost:5267/api"#"https://api-aforo-bbvateamnueve.azurewebsites.net/api"
 
 cap = cv2.VideoCapture('video/carros.mp4')
 
@@ -13,6 +17,7 @@ car_counter = 0
 centers= []
 dx = 0
 diccionario = dict()
+i = 0
 while True:
 
     ret, frame = cap.read()
@@ -38,6 +43,7 @@ while True:
     cnts = cv2.findContours(fgmask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
     # print(len(cnts))
     # print(cnts)
+    
     for cnt in cnts:
         if cv2.contourArea(cnt) > 1000:
             #today = date.now()
@@ -62,10 +68,21 @@ while True:
             dataset["ID"] = np.arange(len(diccionario))
             dataset["Datetime"] = diccionario.keys()
             dataset["Aforo"] = diccionario.values()
-            dataset["Oficina"] = 123
+            dataset["Oficina"] = 1
             
             # Visualización del conteo de autos
-            dataset.to_csv("datasets/real_time.csv",index=None)
+            if i == 30:
+                dataset.to_csv("datasets/real_time.csv",index=None)
+
+    if i == 50: 
+        temp_df = pd.read_csv("datasets/real_time.csv")
+        aforo = temp_df["Aforo"].iloc[-1]
+        id_oficina = temp_df["Oficina"].iloc[-1]
+        print(id_oficina, aforo)
+        r = requests.get(url=URL+"/Oficinas/hub-oficinas/"+str(id_oficina)+"/"+str(aforo))
+        #print(URL+"/oficinas/hub-oficinas/"+str(id_oficina)+"/"+str(aforo))
+        i = 0  
+    i = i + 1
     
     cv2.drawContours(frame, [area_pts], -1, (255, 0, 255), 2)
     cv2.line(frame, (310, 0), (310, 640), (0, 255, 255), 1)
